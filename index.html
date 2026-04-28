@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AKS × Azure Key Vault — Integration Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a14;
+    --bg2: #080f1e;
+    --bg3: #0c1526;
+    --panel: #0d1929;
+    --border: #1a2d4a;
+    --border2: #1e3555;
+    --accent: #00c8ff;
+    --accent2: #0080ff;
+    --accent3: #7c3aed;
+    --accent4: #10b981;
+    --accent5: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2eaf6;
+    --text2: #8ba3c4;
+    --text3: #4d6a8a;
+    --glow: 0 0 24px rgba(0,200,255,0.18);
+    --glow2: 0 0 40px rgba(0,128,255,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lora', Georgia, serif;
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Ambient orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb1 { width: 600px; height: 600px; background: var(--accent2); top: -200px; right: -200px; }
+  .orb2 { width: 400px; height: 400px; background: var(--accent3); bottom: 10%; left: -150px; }
+  .orb3 { width: 300px; height: 300px; background: var(--accent4); top: 50%; right: 10%; }
+
+  /* Nav */
+  nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
+    background: rgba(5, 10, 20, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text2);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--accent); }
+
+  /* Main layout */
+  main {
+    position: relative;
+    z-index: 1;
+    padding-top: 60px;
+  }
+
+  section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 80px 40px;
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding-top: 100px;
+    max-width: 100%;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+
+  .hero-inner {
+    max-width: 900px;
+  }
+
+  .hero-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .hero-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(40px, 6vw, 80px);
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+  }
+
+  .hero h1 .line1 { display: block; color: var(--text); }
+  .hero h1 .line2 {
+    display: block;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-desc {
+    font-size: 18px;
+    color: var(--text2);
+    max-width: 600px;
+    margin-bottom: 48px;
+    line-height: 1.8;
+  }
+
+  .hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid;
+    text-transform: uppercase;
+  }
+
+  .badge-blue { border-color: var(--accent2); color: var(--accent); background: rgba(0,128,255,0.08); }
+  .badge-purple { border-color: var(--accent3); color: #a78bfa; background: rgba(124,58,237,0.08); }
+  .badge-green { border-color: var(--accent4); color: #34d399; background: rgba(16,185,129,0.08); }
+  .badge-amber { border-color: var(--accent5); color: #fbbf24; background: rgba(245,158,11,0.08); }
+
+  /* Section headings */
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--border2), transparent);
+  }
+
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  .section-intro {
+    font-size: 17px;
+    color: var(--text2);
+    max-width: 700px;
+    margin-bottom: 56px;
+    line-height: 1.8;
+  }
+
+  /* Divider */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0 40px;
+  }
+
+  /* Architecture diagram */
+  .arch-diagram {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 40px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 40px;
+  }
+
+  .arch-diagram::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 60% 20%, rgba(0,200,255,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    row-gap: 24px;
+  }
+
+  .arch-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 120px;
+  }
+
+  .arch-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    border: 1px solid;
+    position: relative;
+  }
+
+  .arch-icon.blue { background: rgba(0,128,255,0.12); border-color: rgba(0,128,255,0.3); box-shadow: 0 0 20px rgba(0,128,255,0.1); }
+  .arch-icon.purple { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.3); box-shadow: 0 0 20px rgba(124,58,237,0.1); }
+  .arch-icon.green { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.3); box-shadow: 0 0 20px rgba(16,185,129,0.1); }
+  .arch-icon.amber { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); box-shadow: 0 0 20px rgba(245,158,11,0.1); }
+  .arch-icon.cyan { background: rgba(0,200,255,0.12); border-color: rgba(0,200,255,0.3); box-shadow: 0 0 20px rgba(0,200,255,0.1); }
+
+  .arch-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text2);
+    text-align: center;
+  }
+
+  .arch-sublabel {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text3);
+    text-align: center;
+    margin-top: -6px;
+  }
+
+  .arch-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+    color: var(--text3);
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .arch-arrow-line {
+    width: 50px;
+    height: 1px;
+    background: linear-gradient(to right, var(--border2), var(--accent2), var(--border2));
+    position: relative;
+  }
+
+  .arch-arrow-line::after {
+    content: '▶';
+    position: absolute;
+    right: -6px;
+    top: -6px;
+    font-size: 10px;
+    color: var(--accent2);
+  }
+
+  /* Integration methods tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 32px;
+    background: var(--bg3);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab-btn.active {
+    background: var(--panel);
+    color: var(--accent);
+    border: 1px solid var(--border2);
+    box-shadow: var(--glow);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Method cards */
+  .method-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 20px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+
+  .method-card:hover { border-color: var(--border2); }
+
+  .method-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    right: 0; height: 2px;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .method-card.recommended::before { background: linear-gradient(to right, var(--accent4), var(--accent)); }
+  .method-card.common::before { background: linear-gradient(to right, var(--accent2), var(--accent3)); }
+  .method-card.legacy::before { background: linear-gradient(to right, var(--accent5), var(--danger)); }
+
+  .method-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .rec-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(16,185,129,0.15);
+    color: var(--accent4);
+    border: 1px solid rgba(16,185,129,0.3);
+  }
+
+  .method-desc {
+    color: var(--text2);
+    margin-bottom: 20px;
+    font-size: 15px;
+  }
+
+  /* Code block */
+  .code-block {
+    background: #020811;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 20px 0;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .code-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .code-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .code-dot:nth-child(1) { background: #ff5f56; }
+  .code-dot:nth-child(2) { background: #ffbd2e; }
+  .code-dot:nth-child(3) { background: #27c93f; }
+
+  pre {
+    padding: 24px;
+    overflow-x: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: #c9d8f0;
+  }
+
+  .kw { color: #7c6af9; }
+  .str { color: #69d3a7; }
+  .cm { color: #4a6380; font-style: italic; }
+  .num { color: #f7cc6f; }
+  .prop { color: #79b8ff; }
+  .val { color: #ffab70; }
+
+  /* Features grid */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .feature-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-2px);
+  }
+
+  .feature-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(0,200,255,0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .feature-card:hover::after { opacity: 1; }
+
+  .feature-icon {
+    font-size: 28px;
+    margin-bottom: 14px;
+    display: block;
+  }
+
+  .feature-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .feature-text {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.7;
+  }
+
+  /* Key takeaways */
+  .takeaways-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+
+  .takeaway-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 28px 28px 24px;
+    border-left: 3px solid var(--accent);
+    transition: border-left-color 0.2s;
+  }
+
+  .takeaway-card:nth-child(2) { border-left-color: var(--accent3); }
+  .takeaway-card:nth-child(3) { border-left-color: var(--accent4); }
+  .takeaway-card:nth-child(4) { border-left-color: var(--accent5); }
+  .takeaway-card:nth-child(5) { border-left-color: var(--danger); }
+  .takeaway-card:nth-child(6) { border-left-color: #a78bfa; }
+
+  .takeaway-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .takeaway-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .takeaway-text {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.65;
+  }
+
+  /* Best practices */
+  .practices-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .practice-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    transition: border-color 0.2s;
+  }
+
+  .practice-item:hover { border-color: var(--border2); }
+
+  .practice-check {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--accent4);
+    margin-top: 2px;
+  }
+
+  .practice-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+
+  .practice-desc {
+    font-size: 13.5px;
+    color: var(--text2);
+    line-height: 1.65;
+  }
+
+  /* Comparison table */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .compare-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compare-table td {
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(26,45,74,0.5);
+    color: var(--text2);
+    vertical-align: top;
+  }
+
+  .compare-table tr:last-child td { border-bottom: none; }
+
+  .compare-table td:first-child {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    letter-spacing: 0.04em;
+  }
+
+  .check-yes { color: var(--accent4); }
+  .check-no { color: var(--danger); }
+  .check-partial { color: var(--accent5); }
+
+  .table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 40px;
+  }
+
+  /* Alert box */
+  .alert {
+    padding: 20px 24px;
+    border-radius: 10px;
+    margin: 20px 0;
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert-blue { background: rgba(0,128,255,0.08); border: 1px solid rgba(0,128,255,0.2); color: #93c5fd; }
+  .alert-amber { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); color: #fcd34d; }
+  .alert-green { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); color: #6ee7b7; }
+
+  /* Step guide */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .step {
+    display: flex;
+    gap: 24px;
+    padding-bottom: 40px;
+    position: relative;
+  }
+
+  .step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 44px;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent2), transparent);
+  }
+
+  .step-num {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0,128,255,0.12);
+    border: 1px solid rgba(0,128,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .step-body { flex: 1; }
+
+  .step-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    margin-bottom: 8px;
+    padding-top: 8px;
+  }
+
+  .step-desc {
+    font-size: 14.5px;
+    color: var(--text2);
+    line-height: 1.7;
+    margin-bottom: 12px;
+  }
+
+  /* Footer */
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+    padding: 40px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+  }
+
+  footer span {
+    color: var(--accent);
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes flow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+  }
+
+  .animate-in {
+    animation: fadeUp 0.6s ease forwards;
+  }
+
+  .hero-inner > * {
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards;
+  }
+  .hero-inner > *:nth-child(1) { animation-delay: 0.1s; }
+  .hero-inner > *:nth-child(2) { animation-delay: 0.2s; }
+  .hero-inner > *:nth-child(3) { animation-delay: 0.35s; }
+  .hero-inner > *:nth-child(4) { animation-delay: 0.5s; }
+
+  /* Scrolled reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<nav>
+  <div class="nav-logo">AKS × Key Vault</div>
+  <ul class="nav-links">
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#methods">Methods</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#guide">Guide</a></li>
+    <li><a href="#practices">Practices</a></li>
+    <li><a href="#takeaways">Takeaways</a></li>
+  </ul>
+</nav>
+
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Azure Kubernetes Service — Deep Dive</div>
+      <h1>
+        <span class="line1">Integrate AKS with</span>
+        <span class="line2">Azure Key Vault</span>
+      </h1>
+      <p class="hero-desc">
+        A comprehensive technical guide covering architecture, integration patterns, secret rotation, workload identity, best practices, and production-ready deployment strategies.
+      </p>
+      <div class="hero-badges">
+        <span class="badge badge-blue">Secrets CSI Driver</span>
+        <span class="badge badge-purple">Workload Identity</span>
+        <span class="badge badge-green">Auto Rotation</span>
+        <span class="badge badge-amber">Zero-Trust Security</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Architecture -->
+  <section id="architecture">
+    <div class="section-label">01 — Overview</div>
+    <h2>System Architecture</h2>
+    <p class="section-intro">
+      AKS + Azure Key Vault integration allows Kubernetes pods to securely access secrets, keys, and certificates without ever embedding credentials in code or container images. The architecture leverages Microsoft Entra Workload Identity for passwordless authentication.
+    </p>
+
+    <div class="arch-diagram reveal">
+      <div style="font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text3); margin-bottom:32px; text-align:center;">Data flow & component relationships</div>
+      <div class="arch-flow">
+
+        <div class="arch-node">
+          <div class="arch-icon blue">🐳</div>
+          <div class="arch-label">Pod / App</div>
+          <div class="arch-sublabel">Workload</div>
+        </div>
+        <div class="arch-arrow">
+          <div class="arch-arrow-line"></div>
+          <div style="font-size:9px;color:var(--text3);margin-top:4px;">OIDC Token</div>
+        </div>
+        <div class="arch-node">
+          <div class="arch-icon purple">🆔</div>
+          <div class="arch-label">Entra ID</div>
+          <div class="arch-sublabel">Workload Identity</div>
+        </div>
+        <div class="arch-arrow">
+          <div class="arch-arrow-line"></div>
+          <div style="font-size:9px;color:var(--text3);margin-top:4px;">Access Token</div>
+        </div>
+        <div class="arch-node">
+          <div class="arch-icon amber">🔐</div>
+          <div class="arch-label">Key Vault</div>
+          <div class="arch-sublabel">Secrets Store</div>
+        </div>
+        <div class="arch-arrow">
+          <div class="arch-arrow-line"></div>
+          <div style="font-size:9px;color:var(--text3);margin-top:4px;">Secret Value</div>
+        </div>
+        <div class="arch-node">
+          <div class="arch-icon green">📦</div>
+          <div class="arch-label">CSI Driver</div>
+          <div class="arch-sublabel">Volume Mount</div>
+        </div>
+        <div class="arch-arrow">
+          <div class="arch-arrow-line"></div>
+          <div style="font-size:9px;color:var(--text3);margin-top:4px;">Env / File</div>
+        </div>
+        <div class="arch-node">
+          <div class="arch-icon cyan">⚙️</div>
+          <div class="arch-label">Container</div>
+          <div class="arch-sublabel">Reads Secret</div>
+        </div>
+
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:40px;border-top:1px solid var(--border);padding-top:32px;">
+        <div style="padding:16px;background:rgba(0,128,255,0.05);border-radius:8px;border:1px solid rgba(0,128,255,0.12);">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">OIDC Issuer</div>
+          <div style="font-size:13px;color:var(--text2);">AKS cluster exposes an OIDC endpoint enabling Kubernetes service accounts to exchange tokens for Azure AD tokens.</div>
+        </div>
+        <div style="padding:16px;background:rgba(124,58,237,0.05);border-radius:8px;border:1px solid rgba(124,58,237,0.12);">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:#a78bfa;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Federated Credentials</div>
+          <div style="font-size:13px;color:var(--text2);">App registration binds Kubernetes service account namespace + name to an Azure identity via federation.</div>
+        </div>
+        <div style="padding:16px;background:rgba(16,185,129,0.05);border-radius:8px;border:1px solid rgba(16,185,129,0.12);">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent4);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">CSI Secret Store</div>
+          <div style="font-size:13px;color:var(--text2);">DaemonSet-based driver that mounts Key Vault secrets as volumes or syncs to Kubernetes secrets.</div>
+        </div>
+        <div style="padding:16px;background:rgba(245,158,11,0.05);border-radius:8px;border:1px solid rgba(245,158,11,0.12);">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:#fbbf24;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">RBAC / Policies</div>
+          <div style="font-size:13px;color:var(--text2);">Key Vault access controlled via Azure RBAC roles — no legacy access policies required in modern setups.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Integration Methods -->
+  <section id="methods">
+    <div class="section-label">02 — Integration Patterns</div>
+    <h2>Integration Methods</h2>
+    <p class="section-intro">Three primary patterns for connecting AKS workloads to Azure Key Vault, each with distinct trade-offs in security, complexity, and operational overhead.</p>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('csi')">CSI Driver</button>
+      <button class="tab-btn" onclick="switchTab('sdk')">SDK / REST</button>
+      <button class="tab-btn" onclick="switchTab('legacy')">Pod Identity (Legacy)</button>
+    </div>
+
+    <div id="tab-csi" class="tab-content active">
+      <div class="method-card recommended">
+        <div class="method-title">
+          Secrets Store CSI Driver
+          <span class="rec-tag">Recommended</span>
+        </div>
+        <p class="method-desc">
+          The Azure Key Vault Provider for Secrets Store CSI Driver is the Microsoft-recommended approach. It mounts secrets as volumes or syncs them to Kubernetes secrets, with support for automatic rotation.
+        </p>
+        <div class="alert alert-green">
+          <span class="alert-icon">✅</span>
+          <div>Works with <strong>Workload Identity</strong> (zero credentials) or User-Assigned Managed Identity. Supports auto-rotation, Kubernetes secret sync, and version pinning.</div>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots">
+              <div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div>
+            </div>
+            <span>SecretProviderClass — YAML</span>
+          </div>
+          <pre><span class="kw">apiVersion:</span> <span class="str">secrets-store.csi.x-k8s.io/v1</span>
+<span class="kw">kind:</span> <span class="str">SecretProviderClass</span>
+<span class="kw">metadata:</span>
+  <span class="prop">name:</span> <span class="val">azure-kvname-workload-identity</span>
+  <span class="prop">namespace:</span> <span class="val">my-app</span>
+<span class="kw">spec:</span>
+  <span class="prop">provider:</span> <span class="val">azure</span>
+  <span class="prop">secretObjects:</span>                   <span class="cm"># Sync to K8s Secret</span>
+    - <span class="prop">secretName:</span> <span class="val">foosecret</span>
+      <span class="prop">type:</span> <span class="val">Opaque</span>
+      <span class="prop">data:</span>
+        - <span class="prop">objectName:</span> <span class="val">secret1</span>
+          <span class="prop">key:</span> <span class="val">SECRET_KEY</span>
+  <span class="prop">parameters:</span>
+    <span class="prop">usePodIdentity:</span> <span class="str">"false"</span>
+    <span class="prop">clientID:</span> <span class="str">"&lt;USER_ASSIGNED_CLIENT_ID&gt;"</span>
+    <span class="prop">keyvaultName:</span> <span class="str">"my-key-vault"</span>
+    <span class="prop">cloudName:</span> <span class="str">""</span>
+    <span class="prop">objects:</span> |
+      array:
+        - |
+          <span class="prop">objectName:</span> <span class="str">secret1</span>
+          <span class="prop">objectType:</span> <span class="str">secret</span>
+          <span class="prop">objectVersion:</span> <span class="str">""</span>
+        - |
+          <span class="prop">objectName:</span> <span class="str">mycert</span>
+          <span class="prop">objectType:</span> <span class="str">cert</span>
+    <span class="prop">tenantId:</span> <span class="str">"&lt;TENANT_ID&gt;"</span></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots">
+              <div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div>
+            </div>
+            <span>Pod Spec with Volume Mount</span>
+          </div>
+          <pre><span class="kw">spec:</span>
+  <span class="prop">serviceAccountName:</span> <span class="val">workload-identity-sa</span>
+  <span class="prop">volumes:</span>
+    - <span class="prop">name:</span> <span class="val">secrets-store01-inline</span>
+      <span class="prop">csi:</span>
+        <span class="prop">driver:</span> <span class="str">secrets-store.csi.k8s.io</span>
+        <span class="prop">readOnly:</span> <span class="str">true</span>
+        <span class="prop">volumeAttributes:</span>
+          <span class="prop">secretProviderClass:</span> <span class="str">"azure-kvname-workload-identity"</span>
+  <span class="prop">containers:</span>
+    - <span class="prop">name:</span> <span class="val">my-app</span>
+      <span class="prop">volumeMounts:</span>
+        - <span class="prop">name:</span> <span class="val">secrets-store01-inline</span>
+          <span class="prop">mountPath:</span> <span class="str">"/mnt/secrets-store"</span>
+          <span class="prop">readOnly:</span> <span class="str">true</span>
+      <span class="prop">env:</span>                             <span class="cm"># Or reference K8s secret</span>
+        - <span class="prop">name:</span> <span class="val">SECRET_KEY</span>
+          <span class="prop">valueFrom:</span>
+            <span class="prop">secretKeyRef:</span>
+              <span class="prop">name:</span> <span class="val">foosecret</span>
+              <span class="prop">key:</span> <span class="val">SECRET_KEY</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-sdk" class="tab-content">
+      <div class="method-card common">
+        <div class="method-title">Direct SDK / REST API Access</div>
+        <p class="method-desc">
+          Applications use the Azure SDK or REST API to directly query Key Vault at runtime. Combined with Workload Identity, this is a clean, code-native approach that doesn't require volume mounts.
+        </p>
+        <div class="alert alert-blue">
+          <span class="alert-icon">ℹ️</span>
+          <div>Best for apps that need to fetch secrets <strong>dynamically at runtime</strong>, or when you want to handle caching and versioning in application code.</div>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots">
+              <div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div>
+            </div>
+            <span>Python — Azure SDK with Workload Identity</span>
+          </div>
+          <pre><span class="kw">from</span> azure.identity <span class="kw">import</span> DefaultAzureCredential
+<span class="kw">from</span> azure.keyvault.secrets <span class="kw">import</span> SecretClient
+<span class="kw">import</span> os
+
+<span class="cm"># DefaultAzureCredential picks up Workload Identity token automatically</span>
+credential = DefaultAzureCredential()
+
+vault_url = <span class="str">f"https://{ os.environ['KEYVAULT_NAME'] }.vault.azure.net"</span>
+client = SecretClient(vault_url=vault_url, credential=credential)
+
+<span class="cm"># Fetch secret — no password, no API key needed</span>
+secret = client.<span class="val">get_secret</span>(<span class="str">"my-database-password"</span>)
+db_password = secret.value
+
+<span class="cm"># Fetch specific version</span>
+versioned = client.<span class="val">get_secret</span>(<span class="str">"my-secret"</span>, version=<span class="str">"abc123..."</span>)</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots">
+              <div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div>
+            </div>
+            <span>Node.js / TypeScript</span>
+          </div>
+          <pre><span class="kw">import</span> { DefaultAzureCredential } <span class="kw">from</span> <span class="str">"@azure/identity"</span>;
+<span class="kw">import</span> { SecretClient } <span class="kw">from</span> <span class="str">"@azure/keyvault-secrets"</span>;
+
+<span class="kw">const</span> credential = <span class="kw">new</span> DefaultAzureCredential();
+<span class="kw">const</span> client = <span class="kw">new</span> SecretClient(
+  <span class="str">`https://${process.env.KEYVAULT_NAME}.vault.azure.net`</span>,
+  credential
+);
+
+<span class="cm">// Fetch with retry and caching pattern</span>
+<span class="kw">async function</span> <span class="val">getSecret</span>(name: <span class="prop">string</span>): Promise&lt;<span class="prop">string</span>&gt; {
+  <span class="kw">const</span> { value } = <span class="kw">await</span> client.<span class="val">getSecret</span>(name);
+  <span class="kw">return</span> value!;
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-legacy" class="tab-content">
+      <div class="method-card legacy">
+        <div class="method-title">
+          AAD Pod Identity (Legacy)
+          <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;background:rgba(239,68,68,0.15);color:var(--danger);border:1px solid rgba(239,68,68,0.3);">Deprecated</span>
+        </div>
+        <p class="method-desc">
+          The original Pod Identity solution for AKS. It allowed pods to assume Azure AD identities using node-level IMDS interception. Now officially deprecated in favor of Workload Identity.
+        </p>
+        <div class="alert alert-amber">
+          <span class="alert-icon">⚠️</span>
+          <div>AAD Pod Identity is <strong>deprecated</strong>. Microsoft recommends migrating to <strong>Azure Workload Identity</strong>. No new features are being added and support will end. Do not use for new workloads.</div>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:20px;margin-top:16px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-bottom:12px;color:var(--text);">Migration path from Pod Identity → Workload Identity</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+            1. Enable OIDC issuer on existing cluster: <code style="background:rgba(0,200,255,0.08);padding:2px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);">az aks update --enable-oidc-issuer --enable-workload-identity</code><br>
+            2. Create User-Assigned Managed Identity + federated credential<br>
+            3. Assign Key Vault RBAC roles to the new identity<br>
+            4. Update service account annotations<br>
+            5. Remove AzureIdentity / AzureIdentityBinding CRDs
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <hr class="divider">
+
+  <!-- Features -->
+  <section id="features">
+    <div class="section-label">03 — Capabilities</div>
+    <h2>Key Features</h2>
+    <p class="section-intro">The AKS + Key Vault integration stack delivers a rich set of enterprise-grade capabilities for secrets management at scale.</p>
+
+    <div class="features-grid reveal">
+
+      <div class="feature-card">
+        <span class="feature-icon">🔄</span>
+        <div class="feature-title">Automatic Secret Rotation</div>
+        <p class="feature-text">The CSI driver polls Key Vault at a configurable interval (default 2 min). Updated secrets are reflected in mounted volumes automatically, without pod restarts for file-based access.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🆔</span>
+        <div class="feature-title">Workload Identity (OIDC)</div>
+        <p class="feature-text">Pods authenticate using projected service account tokens exchanged for Azure AD tokens. No stored credentials, client secrets, or certificates needed anywhere in the cluster.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔑</span>
+        <div class="feature-title">Secrets, Keys & Certificates</div>
+        <p class="feature-text">Retrieve all three Key Vault object types. Certificates can be mounted as PEM or PFX, making TLS management seamless for ingress controllers and service meshes.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔗</span>
+        <div class="feature-title">Kubernetes Secret Sync</div>
+        <p class="feature-text">SecretProviderClass can optionally sync KV secrets to native Kubernetes secrets, enabling compatibility with apps that read from env vars via secretKeyRef.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔒</span>
+        <div class="feature-title">Private Endpoint Support</div>
+        <p class="feature-text">Key Vault can be locked down to a private endpoint within the AKS VNet, eliminating public internet exposure entirely for air-gapped or regulated environments.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📌</span>
+        <div class="feature-title">Version Pinning</div>
+        <p class="feature-text">Pin secrets to a specific version in SecretProviderClass for immutable deployments, or use empty string for always-latest — enabling controlled rollouts of credential rotations.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🌐</span>
+        <div class="feature-title">Multi-Vault Support</div>
+        <p class="feature-text">A single pod can mount secrets from multiple Key Vaults using multiple SecretProviderClass resources and volume definitions, supporting multi-tenant architectures.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <div class="feature-title">Audit & Diagnostics</div>
+        <p class="feature-text">All Key Vault access is logged in Azure Monitor and Microsoft Defender for Cloud. Full audit trail of who accessed what secret, when, and from which pod identity.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🛡️</span>
+        <div class="feature-title">Purge Protection & Soft Delete</div>
+        <p class="feature-text">Key Vault soft delete (90-day retention) and purge protection prevent accidental or malicious deletion of secrets — critical for compliance and disaster recovery.</p>
+      </div>
+
+    </div>
+
+    <!-- Comparison Table -->
+    <div class="section-label" style="margin-top:40px;">Method Comparison</div>
+    <div class="table-wrap reveal">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>CSI Driver</th>
+            <th>SDK Direct</th>
+            <th>Pod Identity (old)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Workload Identity Support</td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-no">✗ No</span></td>
+          </tr>
+          <tr>
+            <td>Auto Secret Rotation</td>
+            <td><span class="check-yes">✓ Native</span></td>
+            <td><span class="check-partial">△ Custom logic</span></td>
+            <td><span class="check-partial">△ Limited</span></td>
+          </tr>
+          <tr>
+            <td>No Code Changes Required</td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-no">✗ Requires SDK</span></td>
+            <td><span class="check-yes">✓ Yes</span></td>
+          </tr>
+          <tr>
+            <td>K8s Secret Sync</td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-no">✗ No</span></td>
+            <td><span class="check-partial">△ Via add-ons</span></td>
+          </tr>
+          <tr>
+            <td>Private Endpoint Ready</td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-partial">△ Complex</span></td>
+          </tr>
+          <tr>
+            <td>Actively Maintained</td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-no">✗ Deprecated</span></td>
+          </tr>
+          <tr>
+            <td>Cert / Key Support</td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-yes">✓ Yes</span></td>
+            <td><span class="check-partial">△ Limited</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Step-by-Step Guide -->
+  <section id="guide">
+    <div class="section-label">04 — Implementation</div>
+    <h2>Step-by-Step Setup Guide</h2>
+    <p class="section-intro">Production-ready setup using the CSI Driver with Workload Identity — the recommended modern approach.</p>
+
+    <div class="steps reveal">
+
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <div class="step-title">Enable OIDC Issuer & Workload Identity on AKS</div>
+          <p class="step-desc">Update your existing AKS cluster or create a new one with OIDC issuer and Workload Identity enabled. Also enable the CSI driver add-on.</p>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+              <span>Azure CLI</span>
+            </div>
+            <pre><span class="cm"># Enable on existing cluster</span>
+az aks update \
+  --resource-group myResourceGroup \
+  --name myAKSCluster \
+  --enable-oidc-issuer \
+  --enable-workload-identity \
+  --enable-addons azure-keyvault-secrets-provider
+
+<span class="cm"># Or create new cluster with all flags</span>
+az aks create \
+  --resource-group myResourceGroup \
+  --name myAKSCluster \
+  --enable-oidc-issuer \
+  --enable-workload-identity \
+  --enable-addons azure-keyvault-secrets-provider \
+  --rotation-poll-interval 2m
+
+<span class="cm"># Get OIDC issuer URL (save this!)</span>
+export OIDC_ISSUER=$(az aks show \
+  --name myAKSCluster \
+  --resource-group myResourceGroup \
+  --query "oidcIssuerProfile.issuerUrl" \
+  --output tsv)</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <div class="step-title">Create User-Assigned Managed Identity</div>
+          <p class="step-desc">Create a managed identity that your pods will assume. This identity will be granted Key Vault access.</p>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+              <span>Azure CLI</span>
+            </div>
+            <pre><span class="cm"># Create managed identity</span>
+az identity create \
+  --name myIdentity \
+  --resource-group myResourceGroup \
+  --location eastus
+
+<span class="cm"># Export key values</span>
+export USER_ASSIGNED_CLIENT_ID=$(az identity show \
+  --name myIdentity \
+  --resource-group myResourceGroup \
+  --query clientId -o tsv)
+
+export USER_ASSIGNED_OBJECT_ID=$(az identity show \
+  --name myIdentity \
+  --resource-group myResourceGroup \
+  --query principalId -o tsv)</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <div class="step-title">Create Key Vault & Assign RBAC Roles</div>
+          <p class="step-desc">Create the vault (or use existing) and assign the "Key Vault Secrets User" role to the managed identity.</p>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+              <span>Azure CLI</span>
+            </div>
+            <pre"><span class="cm"># Create Key Vault with RBAC authorization</span>
+az keyvault create \
+  --name myKeyVault \
+  --resource-group myResourceGroup \
+  --location eastus \
+  --enable-rbac-authorization true \
+  --soft-delete-retention-days 90 \
+  --enable-purge-protection true
+
+<span class="cm"># Get KV resource ID</span>
+export KV_ID=$(az keyvault show \
+  --name myKeyVault \
+  --query id -o tsv)
+
+<span class="cm"># Assign 'Key Vault Secrets User' role</span>
+az role assignment create \
+  --role "Key Vault Secrets User" \
+  --assignee-object-id $USER_ASSIGNED_OBJECT_ID \
+  --assignee-principal-type ServicePrincipal \
+  --scope $KV_ID
+
+<span class="cm"># Add a test secret</span>
+az keyvault secret set \
+  --vault-name myKeyVault \
+  --name "db-password" \
+  --value "SuperSecret123!"</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <div class="step-title">Create Federated Credential & Kubernetes Service Account</div>
+          <p class="step-desc">Bind the Kubernetes service account to the Azure managed identity via an OIDC federated credential.</p>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+              <span>Azure CLI + kubectl</span>
+            </div>
+            <pre><span class="cm"># Create the service account in K8s</span>
+cat &lt;&lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: workload-identity-sa
+  namespace: my-app
+  annotations:
+    azure.workload.identity/client-id: "$USER_ASSIGNED_CLIENT_ID"
+EOF
+
+<span class="cm"># Create federated credential linking KSA → Azure Identity</span>
+az identity federated-credential create \
+  --name myFederatedIdentity \
+  --identity-name myIdentity \
+  --resource-group myResourceGroup \
+  --issuer "$OIDC_ISSUER" \
+  --subject "system:serviceaccount:my-app:workload-identity-sa" \
+  --audiences "api://AzureADTokenExchange"</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">05</div>
+        <div class="step-body">
+          <div class="step-title">Deploy SecretProviderClass & Pod</div>
+          <p class="step-desc">Create the SecretProviderClass manifest and deploy your application pod referencing it as a CSI volume.</p>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+              <span>Complete deployment YAML</span>
+            </div>
+            <pre><span class="kw">---</span>
+<span class="kw">apiVersion:</span> <span class="str">secrets-store.csi.x-k8s.io/v1</span>
+<span class="kw">kind:</span> <span class="str">SecretProviderClass</span>
+<span class="kw">metadata:</span>
+  <span class="prop">name:</span> <span class="val">azure-kv-secrets</span>
+  <span class="prop">namespace:</span> <span class="val">my-app</span>
+<span class="kw">spec:</span>
+  <span class="prop">provider:</span> <span class="val">azure</span>
+  <span class="prop">secretObjects:</span>
+    - <span class="prop">secretName:</span> <span class="val">app-secrets</span>
+      <span class="prop">type:</span> <span class="val">Opaque</span>
+      <span class="prop">data:</span>
+        - <span class="prop">objectName:</span> <span class="val">db-password</span>
+          <span class="prop">key:</span> <span class="val">DB_PASSWORD</span>
+  <span class="prop">parameters:</span>
+    <span class="prop">usePodIdentity:</span> <span class="str">"false"</span>
+    <span class="prop">clientID:</span> <span class="str">"$USER_ASSIGNED_CLIENT_ID"</span>
+    <span class="prop">keyvaultName:</span> <span class="str">"myKeyVault"</span>
+    <span class="prop">objects:</span> |
+      array:
+        - |
+          <span class="prop">objectName:</span> <span class="str">db-password</span>
+          <span class="prop">objectType:</span> <span class="str">secret</span>
+          <span class="prop">objectVersion:</span> <span class="str">""</span>
+    <span class="prop">tenantId:</span> <span class="str">"$TENANT_ID"</span>
+<span class="kw">---</span>
+<span class="kw">apiVersion:</span> <span class="str">apps/v1</span>
+<span class="kw">kind:</span> <span class="str">Deployment</span>
+<span class="kw">metadata:</span>
+  <span class="prop">name:</span> <span class="val">my-app</span>
+  <span class="prop">namespace:</span> <span class="val">my-app</span>
+<span class="kw">spec:</span>
+  <span class="prop">template:</span>
+    <span class="prop">metadata:</span>
+      <span class="prop">labels:</span>
+        <span class="prop">azure.workload.identity/use:</span> <span class="str">"true"</span>
+    <span class="prop">spec:</span>
+      <span class="prop">serviceAccountName:</span> <span class="val">workload-identity-sa</span>
+      <span class="prop">volumes:</span>
+        - <span class="prop">name:</span> <span class="val">secrets-store</span>
+          <span class="prop">csi:</span>
+            <span class="prop">driver:</span> <span class="str">secrets-store.csi.k8s.io</span>
+            <span class="prop">readOnly:</span> <span class="str">true</span>
+            <span class="prop">volumeAttributes:</span>
+              <span class="prop">secretProviderClass:</span> <span class="str">"azure-kv-secrets"</span>
+      <span class="prop">containers:</span>
+        - <span class="prop">name:</span> <span class="val">app</span>
+          <span class="prop">image:</span> <span class="str">myregistry.azurecr.io/myapp:latest</span>
+          <span class="prop">volumeMounts:</span>
+            - <span class="prop">name:</span> <span class="val">secrets-store</span>
+              <span class="prop">mountPath:</span> <span class="str">"/mnt/secrets"</span>
+              <span class="prop">readOnly:</span> <span class="str">true</span>
+          <span class="prop">env:</span>
+            - <span class="prop">name:</span> <span class="val">DB_PASSWORD</span>
+              <span class="prop">valueFrom:</span>
+                <span class="prop">secretKeyRef:</span>
+                  <span class="prop">name:</span> <span class="val">app-secrets</span>
+                  <span class="prop">key:</span> <span class="val">DB_PASSWORD</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">06</div>
+        <div class="step-body">
+          <div class="step-title">Verify & Monitor</div>
+          <p class="step-desc">Confirm the integration is working and set up monitoring for failed secret fetches.</p>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+              <span>kubectl — Verification Commands</span>
+            </div>
+            <pre><span class="cm"># Check CSI driver pods are running</span>
+kubectl get pods -n kube-system \
+  -l app=secrets-store-csi-driver
+
+<span class="cm"># Check secret was mounted</span>
+kubectl exec -n my-app deploy/my-app -- \
+  ls /mnt/secrets
+
+<span class="cm"># Read mounted secret file</span>
+kubectl exec -n my-app deploy/my-app -- \
+  cat /mnt/secrets/db-password
+
+<span class="cm"># Check K8s secret was synced</span>
+kubectl get secret app-secrets -n my-app -o yaml
+
+<span class="cm"># Check SecretProviderClass status</span>
+kubectl describe SecretProviderClass azure-kv-secrets -n my-app
+
+<span class="cm"># View CSI driver logs for errors</span>
+kubectl logs -n kube-system \
+  -l app=secrets-store-csi-driver --tail=50</pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Best Practices -->
+  <section id="practices">
+    <div class="section-label">05 — Security & Operations</div>
+    <h2>Best Practices</h2>
+    <p class="section-intro">Production-hardening checklist for AKS + Key Vault integrations in regulated and high-security environments.</p>
+
+    <ul class="practices-list reveal">
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Use Workload Identity over Managed Identity Node-Level</div>
+          <p class="practice-desc">Workload Identity scopes authentication to individual pods (not entire nodes), preventing lateral movement if a pod is compromised. Always annotate service accounts and label pods with <code style="background:rgba(0,200,255,0.08);padding:1px 5px;border-radius:3px;font-family:'DM Mono',monospace;font-size:11px;">azure.workload.identity/use: "true"</code>.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Apply Least-Privilege RBAC Roles</div>
+          <p class="practice-desc">Assign only <strong>Key Vault Secrets User</strong> (read-only) to application identities. Reserve <strong>Key Vault Secrets Officer</strong> for CI/CD pipelines and admin tooling. Scope roles at the secret level when possible, not vault level.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Enable Purge Protection and Soft Delete</div>
+          <p class="practice-desc">Always enable both on Key Vaults used in production. Soft delete gives 90 days of recovery window; purge protection prevents immediate permanent deletion even by admins, which is required for compliance with standards like PCI-DSS and HIPAA.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Use Private Endpoints for Production Vaults</div>
+          <p class="practice-desc">Attach a private endpoint in the AKS VNet and disable public network access on the vault. Combine with NSG rules and Azure Private DNS zones to ensure all traffic is internal and encrypted within the Azure backbone.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Separate Vaults by Environment & Sensitivity</div>
+          <p class="practice-desc">Maintain distinct vaults per environment (dev/staging/prod) and optionally per sensitivity tier. This limits blast radius, simplifies RBAC management, and enables environment-specific rotation policies.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Configure Secret Rotation Policies</div>
+          <p class="practice-desc">Define rotation policies on Key Vault secrets (e.g., rotate every 90 days) and leverage Event Grid or Azure Functions to trigger rotation workflows. Set the CSI driver rotation poll interval to 2 minutes for timely propagation.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Avoid Syncing to K8s Secrets in High-Security Contexts</div>
+          <p class="practice-desc">Kubernetes secrets are stored as base64-encoded (not encrypted at rest by default) in etcd. If your etcd is not encrypted at rest, use file-based volume mounts instead of the secretObjects sync feature to avoid storing secrets in etcd.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Enable Diagnostic Logs and Defender for Key Vault</div>
+          <p class="practice-desc">Route Key Vault audit logs to Log Analytics. Enable Microsoft Defender for Key Vault to get anomaly detection alerts (e.g., a pod suddenly accessing hundreds of secrets). Set up alerts for access denied events.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Pin Secret Versions in Production Manifests</div>
+          <p class="practice-desc">For deployments where secret changes should be intentional and reviewed, pin the <code style="background:rgba(0,200,255,0.08);padding:1px 5px;border-radius:3px;font-family:'DM Mono',monospace;font-size:11px;">objectVersion</code> in SecretProviderClass. Update versions via GitOps PRs to maintain an audit trail of credential changes.</p>
+        </div>
+      </li>
+
+      <li class="practice-item">
+        <div class="practice-check">✓</div>
+        <div>
+          <div class="practice-title">Use Azure Policy to Enforce Key Vault Integration</div>
+          <p class="practice-desc">Apply Azure Policy to require that all AKS deployments in specified namespaces use the CSI driver. Block the use of hardcoded environment variables for secrets via OPA Gatekeeper or Kyverno policies at the admission controller level.</p>
+        </div>
+      </li>
+
+    </ul>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Key Takeaways -->
+  <section id="takeaways">
+    <div class="section-label">06 — Summary</div>
+    <h2>Key Takeaways</h2>
+    <p class="section-intro">The most important principles to carry away from this guide when designing and operating AKS + Key Vault integrations.</p>
+
+    <div class="takeaways-grid reveal">
+
+      <div class="takeaway-card">
+        <div class="takeaway-num">01 / IDENTITY</div>
+        <div class="takeaway-title">Zero Credentials in Kubernetes</div>
+        <p class="takeaway-text">With Workload Identity, no client secrets, service principal passwords, or connection strings should exist anywhere in your cluster — not in ConfigMaps, not in environment variables, not in Helm values. The cluster is credential-free by design.</p>
+      </div>
+
+      <div class="takeaway-card">
+        <div class="takeaway-num">02 / DRIVER</div>
+        <div class="takeaway-title">CSI Driver is the Gold Standard</div>
+        <p class="takeaway-text">The Secrets Store CSI Driver with the Azure Key Vault provider is Microsoft's recommended approach. It requires no code changes, supports rotation, and works across all languages and runtimes through filesystem abstraction.</p>
+      </div>
+
+      <div class="takeaway-card">
+        <div class="takeaway-num">03 / ROTATION</div>
+        <div class="takeaway-title">Rotation is a First-Class Concern</div>
+        <p class="takeaway-text">Design your rotation strategy upfront. File-based mounts auto-refresh without restarts. K8s secret syncs update the secret object. Apps reading env vars will need a restart — consider using Reloader or similar controllers to handle this.</p>
+      </div>
+
+      <div class="takeaway-card">
+        <div class="takeaway-num">04 / NETWORK</div>
+        <div class="takeaway-title">Private Endpoints for Production</div>
+        <p class="takeaway-text">Public Key Vault endpoints are acceptable only for development. Any production, staging, or regulated workload must use private endpoints with public network access disabled. DNS resolution through Private DNS zones is mandatory.</p>
+      </div>
+
+      <div class="takeaway-card">
+        <div class="takeaway-num">05 / SCOPE</div>
+        <div class="takeaway-title">Identity Granularity Matters</div>
+        <p class="takeaway-text">Assign a separate managed identity per application team or microservice, not one shared identity for the whole cluster. This limits blast radius: if one workload is compromised, attackers cannot access secrets belonging to other applications.</p>
+      </div>
+
+      <div class="takeaway-card">
+        <div class="takeaway-num">06 / GITOPS</div>
+        <div class="takeaway-title">Treat SecretProviderClass as Code</div>
+        <p class="takeaway-text">Version-control your SecretProviderClass manifests alongside application code in Git. Secret version updates, new object additions, and RBAC changes should all flow through a reviewed pull request — creating an auditable, reproducible secrets configuration.</p>
+      </div>
+
+    </div>
+
+    <div class="alert alert-blue" style="margin-top:40px;">
+      <span class="alert-icon">🔗</span>
+      <div>
+        <strong>Further Reading:</strong> Official docs at <code style="background:rgba(0,200,255,0.08);padding:2px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;">learn.microsoft.com/azure/aks/csi-secrets-store-driver</code> and the <code style="background:rgba(0,200,255,0.08);padding:2px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;">secrets-store-csi-driver</code> GitHub repository for provider releases and migration guides.
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<footer>
+  AKS × Azure Key Vault — Integration Reference Guide &nbsp;·&nbsp; <span>Claude</span> for Anthropic &nbsp;·&nbsp; 2026
+</footer>
+
+<script>
+  // Tab switching
+  function switchTab(id) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  // Reveal on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
