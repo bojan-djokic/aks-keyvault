@@ -1,10 +1,10 @@
-#  AKS × Azure Key Vault Integration
+#  AKS and Azure Key Vault Integration
 
 Production-grade implementation of secure secret management in Kubernetes using Azure-native services.
 
 ##  Live Demo
 
- https://bojan0807.github.io/aks-keyvault
+ https://bojan-djokic.github.io/aks-keyvault
 
 ---
 
